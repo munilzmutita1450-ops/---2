@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>สถิติ 3 มิติ: ค่ากลางและพิสัยของข้อมูล</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a1020;--glass:rgba(255,255,255,.07);--edge:rgba(255,255,255,.15);--ink:#eaf0ff;--mut:#9fb0d0;--pri:#5b8cff;--mean:#ff8a3d;--med:#3ddc84;--mode:#b57bff;--rng:#3fd0e0}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:radial-gradient(1200px 700px at 15% 0%,#1b2a5c 0%,var(--bg) 60%);color:var(--ink);font-family:'IBM Plex Sans Thai','Noto Sans Thai',Tahoma,sans-serif;line-height:1.6}
+.app{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(340px,1fr);gap:14px;height:100vh;padding:14px}
+.stage{position:relative;border-radius:20px;overflow:hidden;border:1px solid var(--edge);background:#0a1020;min-height:420px}
+#gl{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none}
+#gl:active{cursor:grabbing}
+.hud{position:absolute;left:14px;right:14px;top:14px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between;pointer-events:none}
+.hud>*{pointer-events:auto}
+.glass{background:var(--glass);border:1px solid var(--edge);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-radius:14px}
+.hud h1{margin:0;font-size:1.05rem;font-weight:600;padding:8px 14px}
+.views{display:flex;gap:4px;padding:4px}
+button{font-family:inherit;font-size:.92rem;color:var(--ink);background:transparent;border:0;border-radius:10px;padding:7px 12px;cursor:pointer;transition:background .2s,transform .15s}
+button:hover{background:rgba(255,255,255,.12)}
+button:active{transform:scale(.96)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--pri);outline-offset:2px}
+.views button.on,.tabs button.on{background:var(--pri);font-weight:600}
+.hint{position:absolute;left:14px;bottom:14px;font-size:.8rem;color:var(--mut);padding:5px 12px}
+#hs button.hot{position:absolute;left:0;top:0;display:flex;align-items:center;gap:6px;padding:4px 10px 4px 6px;font-size:.82rem;background:rgba(10,16,32,.7);border:1px solid var(--c);border-radius:99px;will-change:transform}
+#hs button.hot i{width:12px;height:12px;border-radius:50%;background:var(--c);box-shadow:0 0 0 0 var(--c);animation:pulse 2s infinite}
+#hs button.hot.on{background:var(--c);color:#0a1020;font-weight:600}
+@keyframes pulse{70%{box-shadow:0 0 0 9px transparent}100%{box-shadow:0 0 0 0 transparent}}
+#card{position:absolute;right:14px;bottom:14px;width:min(320px,calc(100% - 28px));padding:14px 16px;display:none;border-left:4px solid var(--c)}
+#card.show{display:block;animation:rise .35s cubic-bezier(.2,1.2,.4,1)}
+@keyframes rise{from{opacity:0;transform:translateY(18px) scale(.95)}to{opacity:1;transform:none}}
+#card h3{margin:0 0 4px;font-size:1.05rem;color:var(--c)}
+#card p{margin:0;font-size:.92rem}
+#card .x{position:absolute;right:6px;top:6px;padding:2px 8px}
+.panel{display:flex;flex-direction:column;min-height:0;padding:12px;border-radius:20px}
+.tabs{display:flex;gap:4px;margin-bottom:10px}
+.tabs button{flex:1}
+.pane{display:none;overflow:auto;min-height:0;flex:1;padding:2px 4px 8px}
+.pane.on{display:block;animation:fade .3s}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+h2{margin:0 0 8px;font-size:1rem;font-weight:600}
+label{font-size:.9rem;color:var(--mut)}
+input,select,textarea{font-family:inherit;font-size:.95rem;color:var(--ink);background:rgba(255,255,255,.08);border:1px solid var(--edge);border-radius:8px;padding:4px 8px}
+input[type=range]{padding:0;accent-color:var(--pri)}
+select option{color:#0a1020}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
+.row .b{background:rgba(255,255,255,.1)}
+#vals{display:grid;gap:6px;max-height:300px;overflow:auto}
+#vals div{display:flex;align-items:center;gap:8px;padding:3px 8px;border-radius:10px;background:rgba(255,255,255,.05)}
+#vals .nb{width:68px}
+#vals .rg{flex:1;min-width:60px}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tile{text-align:left;padding:10px 12px;border:1px solid var(--c);border-radius:14px;background:rgba(255,255,255,.05)}
+.tile small{display:block;color:var(--mut)}
+.tile b{font-size:1.6rem;color:var(--c);font-weight:600}
+.steps{margin-top:10px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.05);font-size:.9rem}
+.steps b{color:#fff}
+.q{padding:10px 0;border-top:1px solid var(--edge)}
+.q .t{white-space:pre-wrap}
+.q label{display:block;color:var(--ink);padding:3px 0;cursor:pointer}
+.fb{display:none;margin-top:6px;padding:6px 10px;border-radius:8px;font-size:.9rem}
+.fb.ok{display:block;background:rgba(61,220,132,.18)}.fb.no{display:block;background:rgba(255,90,90,.18)}.fb.ans{display:block;background:rgba(91,140,255,.2)}
+#score{font-weight:600;margin-top:8px}
+@media(max-width:860px){.app{grid-template-columns:1fr;height:auto}.stage{height:68vh}.panel{min-height:520px}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.gamebtn{background:linear-gradient(135deg,#ffd54a,#ff8a3d);color:#0a1020;font-weight:600;padding:8px 16px;box-shadow:0 4px 14px rgba(255,138,61,.35)}
+.hud .gamebtn:hover{background:linear-gradient(135deg,#ffe27a,#ffa05c)}
+.sc-open{margin-top:12px;background:#ffd54a;color:#1e2a3a;font-size:1.05rem;padding:10px 18px;box-shadow:0 4px 0 #d9a800}
+#sc[hidden]{display:none}
+#sc{position:fixed;inset:0;z-index:1000;overflow:auto;background:linear-gradient(160deg,#3b2bd9,#7a3cf0 48%,#ff5fa2);color:#1e2a3a;padding:12px}
+#sc button{font-family:inherit}
+#sc .sc-top{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;color:#fff;margin-bottom:10px}
+#sc .sc-logo{font-size:1.35rem}
+#sc .sc-logo small{display:block;font-size:.8rem;font-weight:400;opacity:.9}
+#sc .sc-modes{display:flex;gap:6px;flex-wrap:wrap}
+#sc .sc-modes button,#sc .sc-hud button,#sc .sc-top>button{background:rgba(255,255,255,.2);color:#fff;padding:7px 12px;font-size:.95rem}
+#sc .sc-modes button.on{background:#ffd54a;color:#1e2a3a}
+#sc .sc-card{background:rgba(255,255,255,.96);border-radius:18px;padding:16px;box-shadow:0 6px 20px rgba(20,10,80,.25)}
+#sc .sc-menu{max-width:860px;margin:0 auto}
+#sc .sc-menu h2{font-size:1.5rem;margin:0 0 6px}
+#sc .sc-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:12px 0}
+#sc .sc-cards button{text-align:left;background:#f3f0ff;color:#1e2a3a;border:3px solid transparent;padding:12px;border-radius:14px;font-size:.92rem}
+#sc .sc-cards button.on{border-color:#7a3cf0;background:#e8e0ff}
+#sc .sc-cards b{display:block;font-size:1.05rem}
+#sc .sc-go{background:#12a150;color:#fff;font-size:1.15rem;padding:12px 26px;box-shadow:0 4px 0 #0b7a3b}
+#sc .sc-play{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:12px;max-width:1280px;margin:0 auto}
+#sc .sc-play[hidden]{display:none}
+#sc .sc-hud{display:flex;gap:8px;flex-wrap:wrap;align-items:center;color:#fff;margin-bottom:8px}
+#sc .sc-hud .st{background:rgba(255,255,255,.2);border-radius:12px;padding:4px 12px;font-size:.95rem}
+#sc .sc-hud .st b{font-size:1.3rem;margin-left:4px}
+#sc .sc-mis{background:#fff;border-radius:14px;padding:10px 14px;margin-bottom:8px;font-size:1.15rem;font-weight:600;border-left:8px solid #ff3d8b}
+#sc .sc-mis small{font-weight:400;color:#5d6b7e;margin-left:6px}
+#sc .sc-bar{height:10px;background:rgba(255,255,255,.3);border-radius:9px;overflow:hidden;margin-bottom:8px}
+#sc .sc-bar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#2ee59d,#ffd54a);transition:width .2s linear}
+#sc .sc-arena{position:relative;height:min(68vh,620px);min-height:380px;border-radius:20px;overflow:hidden;background:linear-gradient(#1b1464,#2c1f93);box-shadow:inset 0 0 0 3px rgba(255,255,255,.25);touch-action:none;cursor:crosshair;user-select:none}
+#sc .sc-basket{position:absolute;left:10px;right:10px;bottom:10px;height:90px;border:4px dashed #2ee59d;border-radius:18px;background:rgba(46,229,157,.15);color:#c9ffe9;display:flex;align-items:center;justify-content:center;font-size:1.05rem;pointer-events:none}
+#sc .sc-basket.hot{background:rgba(46,229,157,.4)}
+#sc .sc-n{position:absolute;left:0;top:0;width:68px;height:68px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.9rem;font-weight:700;color:#1e2a3a;background:radial-gradient(circle at 30% 25%,#fff3b0,#ffd54a 55%,#ff9f1c);box-shadow:0 4px 10px rgba(0,0,0,.35);will-change:transform;pointer-events:none}
+#sc .sc-n.hov{box-shadow:0 0 0 6px #35e0ff,0 4px 12px rgba(0,0,0,.4)}
+#sc .sc-n.held{background:radial-gradient(circle at 30% 25%,#d4ffec,#2ee59d 60%,#12a150);box-shadow:0 0 0 6px #fff,0 8px 18px rgba(0,0,0,.5)}
+#sc .sc-cur{position:absolute;left:0;top:0;width:34px;height:34px;margin:-17px 0 0 -17px;border:4px solid #35e0ff;border-radius:50%;pointer-events:none;display:none;z-index:5;transition:background .1s}
+#sc .sc-cur.down{background:rgba(46,229,157,.6);border-color:#2ee59d}
+#sc .sc-layer{position:absolute;inset:0;z-index:8;display:none;align-items:center;justify-content:center;background:rgba(20,10,80,.72);padding:14px}
+#sc .sc-layer.show{display:flex}
+#sc .sc-layer .sc-card{max-width:520px;max-height:100%;overflow:auto}
+#sc .sc-layer h3{margin:0 0 6px;font-size:1.3rem}
+#sc .sc-side{display:flex;flex-direction:column;gap:10px}
+#sc .sc-cam{position:relative;border-radius:12px;overflow:hidden;background:#111;aspect-ratio:4/3;display:none}
+#sc .sc-cam.on{display:block}
+#sc .sc-cam video,#sc .sc-cam canvas{position:absolute;inset:0;width:100%;height:100%;transform:scaleX(-1);object-fit:cover}
+#sc .sc-chips{display:flex;flex-wrap:wrap;gap:6px;min-height:40px;margin:6px 0}
+#sc .sc-chips button{background:#e8e0ff;color:#1e2a3a;border-radius:99px;padding:4px 14px;font-size:1.2rem;font-weight:700;border:3px solid transparent}
+#sc .sc-chips button.mid,#sc .sc-chips button.md{border-color:#ff3d8b;background:#ffe0ee}
+#sc .sc-chips button.ed{border-color:#0b7285;background:#d6f3f7}
+#sc .sc-chips button.pop{animation:scpop .4s}
+@keyframes scpop{from{transform:scale(.2)}60%{transform:scale(1.25)}to{transform:scale(1)}}
+#sc .sc-tiles{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}
+#sc .sc-tiles div{border-radius:10px;padding:4px 10px;border:2px solid;font-size:.82rem;color:#5d6b7e}
+#sc .sc-tiles b{display:block;font-size:1.3rem}
+#sc .sc-fb{margin-top:8px;padding:8px 12px;border-radius:10px;font-size:.95rem;display:none}
+#sc .sc-fb.ok{display:block;background:#e3f6ea;color:#0b6b35}
+#sc .sc-fb.no{display:block;background:#fdeaea;color:#a12626}
+#sc .sc-chk{background:#ff3d8b;color:#fff;font-size:1.1rem;padding:10px;width:100%;box-shadow:0 4px 0 #c42068}
+#sc .sc-note{font-size:.88rem;color:#5d6b7e;margin:4px 0}
+#sc .sc-p{position:absolute;width:10px;height:10px;border-radius:50%;pointer-events:none;z-index:6;animation:scp .65s ease-out forwards}
+@keyframes scp{to{transform:translate(var(--dx),var(--dy)) scale(.2);opacity:0}}
+#sc .sc-fl{position:absolute;z-index:6;color:#ffd54a;font-weight:700;font-size:1.5rem;pointer-events:none;animation:scf .9s ease-out forwards}
+@keyframes scf{to{transform:translateY(-50px);opacity:0}}
+@media(max-width:900px){#sc .sc-play{grid-template-columns:1fr}#sc .sc-arena{height:58vh}}
+@media(prefers-reduced-motion:reduce){#sc .sc-p,#sc .sc-fl,#sc .sc-chips button.pop{animation:none}}
+</style>
+</head>
+<body>
+<main class="app">
+<section class="stage">
+<canvas id="gl"></canvas>
+<div class="hud">
+<h1 class="glass">ค่ากลางและพิสัยของข้อมูล</h1>
+<nav class="views glass" id="views"><button data-v="dot" class="on">แผนภาพจุด</button><button data-v="stem">แผนภาพต้นไม้</button><button data-v="hist">ฮิสโทแกรม</button></nav>
+<button class="gamebtn" id="scOpen">🎮 เข้าสู่โหมดเกม Stat Catcher</button>
+</div>
+<div id="hs"></div>
+<div class="hint glass">ลาก = หมุน • คลิกขวาลาก = แพน • ล้อเมาส์ = ซูม • กดจุดสีเพื่ออ่านคำอธิบาย</div>
+<article id="card" class="glass"><button class="x" id="cx" aria-label="ปิด">✕</button><h3 id="ct"></h3><p id="cb"></p></article>
+</section>
+<aside class="panel glass">
+<nav class="tabs"><button data-t="data" class="on">ข้อมูล</button><button data-t="stat">สถิติ</button><button data-t="quiz">ทดสอบ</button></nav>
+<section class="pane on" id="p-data">
+<h2>ปรับข้อมูลของคุณ</h2>
+<div class="row"><label>จำนวนข้อมูล <input type="number" id="nn" min="1" value="8" style="width:80px"></label><label>ช่วงแถบเลื่อนสูงสุด <input type="number" id="rmax" min="1" value="60" style="width:80px"></label></div>
+<input type="range" id="n" min="1" max="30" value="8" style="width:100%">
+<div id="vals"></div>
+<div class="row"><button class="b" id="rnd">สุ่มข้อมูลใหม่</button><button class="b" id="srt">เรียงข้อมูล</button></div>
+<div class="row"><label>ความกว้างอันตรภาคชั้น <input type="number" id="hw" min="1" value="10" style="width:70px"></label><button class="b" id="hauto">อัตโนมัติ</button></div>
+<label for="paste">วางข้อมูลทั้งชุด (คั่นด้วยจุลภาคหรือเว้นวรรค)</label>
+<textarea id="paste" rows="2" style="width:100%;margin-top:4px" placeholder="เช่น 12 25 18 25 31 9 25 40"></textarea>
+<div class="row"><button class="b" id="usep">ใช้ข้อมูลนี้</button></div>
+</section>
+<section class="pane" id="p-stat">
+<h2>ผลการคำนวณ</h2>
+<div class="tiles">
+<button class="tile" data-id="mean" style="--c:var(--mean)"><small>ค่าเฉลี่ย</small><b id="mean">-</b></button>
+<button class="tile" data-id="med" style="--c:var(--med)"><small>มัธยฐาน</small><b id="med">-</b></button>
+<button class="tile" data-id="mode" style="--c:var(--mode)"><small>ฐานนิยม</small><b id="mode">-</b></button>
+<button class="tile" data-id="rng" style="--c:var(--rng)"><small>พิสัย</small><b id="rng">-</b></button>
+</div>
+<div class="steps" id="steps"></div>
+</section>
+<section class="pane" id="p-quiz">
+<h2>ตรวจสอบความเข้าใจ</h2>
+<div id="quiz"></div>
+<div class="row"><button class="b" id="chk">ตรวจคำตอบ</button><button class="b" id="rev">ดูเฉลยทั้งหมด</button></div>
+<div id="score"></div>
+</section>
+</aside>
+</main>
+<div id="sc" hidden>
+<div class="sc-top">
+<b class="sc-logo">🖐️ Stat Catcher<small>มือจับตัวเลข พิชิตสถิติ</small></b>
+<div class="sc-modes" id="scModes"></div>
+<button id="scBack">← กลับสู่บทเรียน</button>
+</div>
+<section id="scMenu" class="sc-menu sc-card">
+<h2>Stat Catcher: มือจับตัวเลข พิชิตสถิติ</h2>
+<p>ตัวเลขจะตกลงมาจากด้านบน ให้หยิบตัวเลขลงตะกร้าเพื่อสร้างชุดข้อมูลให้ตรงโจทย์ แล้วกด "ตรวจคำตอบ" เล่นครบ 5 ภารกิจจะได้สรุปผล</p>
+<b>เลือกภารกิจ</b>
+<div class="sc-cards" id="scCards"></div>
+<p class="sc-note"><b>วิธีควบคุมด้วยมือ:</b> กด "เปิดกล้อง" ในหน้าเกม ยกมือให้อยู่ในกรอบ ขยับมือเพื่อเลื่อนวงกลมไปที่ตัวเลข หนีบนิ้วโป้งกับนิ้วชี้เพื่อหยิบ พามือไปที่ตะกร้าสีเขียวแล้วปล่อยนิ้ว<br><b>ไม่มีกล้อง?</b> ใช้เมาส์หรือนิ้วแตะ ลากตัวเลขไปที่ตะกร้าได้เลย</p>
+<button class="sc-go" id="scStart">▶ เริ่มเกม</button>
+</section>
+<section id="scPlay" class="sc-play" hidden>
+<div>
+<div class="sc-hud">
+<span class="st">คะแนน<b id="scScore">0</b></span><span class="st">เวลา<b id="scTime">0</b> วินาที</span><span class="st">สำเร็จ<b id="scDone">0</b></span><span class="st">ระดับ<b id="scLv">1</b></span><span class="st">ภารกิจ<b id="scNo">1/5</b></span>
+<button id="scPause">⏸ หยุด</button><button id="scResume" hidden>▶ เล่นต่อ</button><button id="scRestart">↺ เริ่มใหม่</button><button id="scEnd">🏁 จบและดูสรุป</button>
+</div>
+<div class="sc-mis" id="scMis"></div>
+<div class="sc-bar"><i id="scBar"></i></div>
+<div class="sc-arena" id="scArena">
+<div class="sc-basket" id="scBasket">🧺 ตะกร้าข้อมูล: วางตัวเลขตรงนี้</div>
+<div class="sc-cur" id="scCur"></div>
+<div class="sc-layer" id="scLayer"><div class="sc-card" id="scLayerBox"></div></div>
+</div>
+</div>
+<aside class="sc-side">
+<div class="sc-card">
+<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="sc-go" style="font-size:.95rem;padding:7px 12px" id="scCamOn">📷 เปิดกล้อง</button><button style="background:#e9eef7;color:#1e2a3a;border:0;border-radius:8px;padding:7px 12px;font-size:.95rem;cursor:pointer" id="scCamOff">ปิดกล้อง</button></div>
+<div class="sc-note" id="scCamSt">กล้องปิดอยู่ (เล่นด้วยเมาส์หรือหน้าจอสัมผัสได้)</div>
+<div class="sc-cam" id="scCam"><video id="scVid" playsinline muted></video><canvas id="scOv"></canvas></div>
+</div>
+<div class="sc-card">
+<b>ชุดข้อมูลที่จับได้ (<span id="scN">0</span> ค่า)</b>
+<div class="sc-note">กดตัวเลขในตะกร้าเพื่อเอาออก (หัก 10 คะแนน)</div>
+<div class="sc-chips" id="scChips"></div>
+<div class="sc-note" id="scExtra"></div>
+<div class="sc-tiles">
+<div style="border-color:#e8590c">ค่าเฉลี่ย<b id="scMean">-</b></div><div style="border-color:#12a150">มัธยฐาน<b id="scMed">-</b></div>
+<div style="border-color:#9c36b5">ฐานนิยม<b id="scMode">-</b></div><div style="border-color:#0b7285">พิสัย<b id="scRng">-</b></div>
+</div>
+</div>
+<button class="sc-chk" id="scChk">✔ ตรวจคำตอบ</button>
+<div class="sc-fb" id="scFb"></div>
+</aside>
+</section>
+</div>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const fmt=x=>Number.isInteger(x)?x:+x.toFixed(2);
+const css=h=>'#'+h.toString(16).padStart(6,'0');
+const BLU=0x5b8cff,PUR=0xb57bff,ORG=0xff8a3d,GRN=0x3ddc84,TEAL=0x3fd0e0,NAVY=0x24356b,GRY=0x6b7aa6;
+const COL={mean:ORG,med:GRN,mode:PUR,rng:TEAL};
+let vals=[12,25,18,25,31,9,25,40],view='dot',hot=null,hwUser=null,A=false,anim=[],animEnd=0,t0=0,fly=null,C=null,hsList=[];
+
+function calc(){
+  const s=[...vals].sort((a,b)=>a-b),n=s.length,sum=s.reduce((a,b)=>a+b,0),mean=sum/n;
+  const med=n%2?s[(n-1)/2]:(s[n/2-1]+s[n/2])/2;
+  const f=new Map();s.forEach(v=>f.set(v,(f.get(v)||0)+1));
+  let mx=0;f.forEach(c=>{if(c>mx)mx=c;});
+  const modes=mx===1?[]:[...f].filter(e=>e[1]===mx).map(e=>e[0]);
+  return{s,n,sum,mean,med,modes,ms:new Set(modes),mx,rng:s[n-1]-s[0]};
+}
+const lim=(a,k=10)=>a.length>k?a.slice(0,k).join(', ')+' … (รวม '+a.length+' ค่า)':a.join(', ');
+const niceStep=r=>{const t=r/8,p=Math.pow(10,Math.floor(Math.log10(t))),f=t/p;return(f<=1?1:f<=2?2:f<=5?5:10)*p;};
+
+const cv=$('gl'),R=new THREE.WebGLRenderer({canvas:cv,antialias:true});
+R.setPixelRatio(Math.min(devicePixelRatio,2));R.shadowMap.enabled=true;R.shadowMap.type=THREE.PCFSoftShadowMap;
+const S=new THREE.Scene();S.background=new THREE.Color(0x0a1020);S.fog=new THREE.Fog(0x0a1020,45,100);
+const cam=new THREE.PerspectiveCamera(42,1,.1,200);cam.position.set(3,10,24);
+const oc=new THREE.OrbitControls(cam,cv);oc.enableDamping=true;oc.dampingFactor=.08;oc.maxPolarAngle=Math.PI*.495;oc.minDistance=5;oc.maxDistance=70;oc.target.set(0,2,0);
+oc.addEventListener('start',()=>{fly=null;});
+S.add(new THREE.HemisphereLight(0xbcd0ff,0x1a2040,.75));
+const sun=new THREE.DirectionalLight(0xffffff,1.1);sun.position.set(10,22,14);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
+Object.assign(sun.shadow.camera,{left:-26,right:26,top:26,bottom:-26,near:1,far:80});sun.shadow.bias=-.0004;S.add(sun);
+const rim=new THREE.PointLight(0x6a4cf0,.9,70);rim.position.set(-14,8,-10);S.add(rim);
+const floor=new THREE.Mesh(new THREE.CircleGeometry(60,64),new THREE.MeshStandardMaterial({color:0x121a33,roughness:.35,metalness:.4}));
+floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;S.add(floor);
+const grid=new THREE.GridHelper(120,120,0x2a3a6a,0x1a2650);grid.position.y=.01;grid.material.transparent=true;grid.material.opacity=.45;S.add(grid);
+
+const sph=new THREE.SphereGeometry(1,28,20),boxg=new THREE.BoxGeometry(1,1,1);
+const W=new THREE.Group(),P=new THREE.Group();S.add(W,P);
+const mc=new Map();
+const mat=h=>{if(!mc.has(h))mc.set(h,new THREE.MeshStandardMaterial({color:h,roughness:.35,metalness:.15}));return mc.get(h);};
+let tc=new Map();
+function ltex(t,col){
+  const k='l'+t+col;if(tc.has(k))return tc.get(k);
+  const c=document.createElement('canvas');c.width=512;c.height=96;const g=c.getContext('2d');
+  g.fillStyle=col;g.font='600 44px "IBM Plex Sans Thai",sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(t,256,50);
+  const T=new THREE.CanvasTexture(c);T.anisotropy=4;tc.set(k,T);return T;
+}
+function ntex(t,h){
+  const k='n'+t+h;if(tc.has(k))return tc.get(k);
+  const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');
+  g.fillStyle=css(h);g.fillRect(0,0,128,128);g.fillStyle='#fff';
+  const L=String(t).length;g.font=`600 ${L>3?44:L>2?60:L>1?80:94}px "IBM Plex Sans Thai",sans-serif`;
+  g.textAlign='center';g.textBaseline='middle';g.fillText(t,64,70);
+  const T=new THREE.CanvasTexture(c);T.anisotropy=4;tc.set(k,T);return T;
+}
+function put(m,d,own){
+  m.userData.s=m.scale.clone();m.userData.d=d||0;m.userData.own=own?1:0;W.add(m);
+  if(A){anim.push(m);m.scale.setScalar(.001);}
+  return m;
+}
+function txt(s,col,h,x,y,z){
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:ltex(s,col),transparent:true,depthWrite:false}));
+  sp.scale.set(h*5.33,h,1);sp.position.set(x,y,z);return put(sp,0);
+}
+function bar(x0,x1,y,z,h,t){
+  const m=new THREE.Mesh(boxg,mat(h));m.scale.set(Math.max(.02,x1-x0),t,t);m.position.set((x0+x1)/2,y,z);m.castShadow=true;return put(m,0);
+}
+function rod(x,y0,y1,z,h,t){
+  const m=new THREE.Mesh(boxg,mat(h));m.scale.set(t,y1-y0,t);m.position.set(x,(y0+y1)/2,z);return put(m,0);
+}
+function clearW(){
+  anim=[];
+  for(let i=W.children.length-1;i>=0;i--){const o=W.children[i];W.remove(o);}
+}
+
+const pl={};
+[['mean',ORG],['med',GRN]].forEach(([k,c])=>{
+  const m=new THREE.Mesh(boxg,new THREE.MeshStandardMaterial({color:c,emissive:c,emissiveIntensity:.7,transparent:true,opacity:.3,depthWrite:false}));
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({transparent:true,depthWrite:false,depthTest:false}));
+  sp.scale.set(4.8,.9,1);P.add(m,sp);pl[k]={m,sp,x:0,h:1,on:false,ly:0};
+});
+
+function setPlanes(c,x,h,zw,ly){
+  const d=x?{mean:[x(c.mean),'ค่าเฉลี่ย '+fmt(c.mean),ORG,ly+.5],med:[x(c.med),'มัธยฐาน '+fmt(c.med),GRN,ly+1.6]}:{};
+  Object.keys(pl).forEach(k=>{
+    const p=pl[k],v=d[k];p.on=!!x;p.m.visible=p.sp.visible=p.on;if(!p.on)return;
+    if(p.fresh===undefined||A)p.m.position.x=v[0];
+    p.x=v[0];p.m.scale.set(.1,h,zw*2);p.m.position.y=h/2;p.sp.material.map=ltex(v[1],css(v[2]));p.sp.material.needsUpdate=true;p.sp.position.y=h+v[3]-.4;p.sp.position.z=0;p.fresh=1;
+  });
+}
+
+function buildDot(c){
+  const hi=c.s[c.n-1],st=niceStep(Math.max(hi,1)),xm=Math.max(st,Math.ceil((hi+st*.3)/st)*st),sx=20/xm;
+  const r=Math.min(.45,Math.max(.16,.5*sx)),zs=Math.max(1.8,r*3.6),dly=Math.min(40,1200/c.n),cnt=new Map();
+  let top=0,mv=null,mp=null;
+  c.s.forEach((v,k)=>{
+    const q=cnt.get(v)||0;cnt.set(v,q+1);const y=r+Math.floor(q/3)*r*1.8,z=((q%3)-1)*r*2.1;top=Math.max(top,y+r);
+    const m=new THREE.Mesh(sph,mat(c.ms.has(v)?PUR:BLU));m.scale.setScalar(r);m.position.set(v*sx,y,z);m.castShadow=true;put(m,k*dly);
+    if(c.ms.has(v)&&(mv===null||mv===v)){mv=v;mp=new THREE.Vector3(v*sx,y+r+.7,0);}
+  });
+  bar(-.4,20.4,.02,0,GRY,.05);
+  for(let t=0;t<=xm+1e-9;t+=st){rod(t*sx,0,.5,0,GRY,.06);txt(String(fmt(t)),'#9fb0d0',.8,t*sx,-.1,zs+.9);}
+  const x0=c.s[0]*sx,x1=c.s[c.n-1]*sx,zr=zs+1.8;
+  bar(x0,x1,.06,zr,TEAL,.14);rod(x0,0,.7,zr,TEAL,.14);rod(x1,0,.7,zr,TEAL,.14);
+  txt('พิสัย = '+fmt(hi)+' − '+fmt(c.s[0])+' = '+fmt(c.rng),'#3fd0e0',.9,(x0+x1)/2,.9,zr);
+  const H=top+2;setPlanes(c,v=>v*sx,H,zs,H);
+  hsList=[{id:'mean',p:new THREE.Vector3(c.mean*sx,H+.3,0)},{id:'med',p:new THREE.Vector3(c.med*sx,H+1.5,0)},{id:'rng',p:new THREE.Vector3((x0+x1)/2,.4,zr)}];
+  if(mp)hsList.push({id:'mode',p:mp});
+  return{off:10,tgt:[0,Math.max(2,H/2-.5),0],pos:[3,H*.9+6,24]};
+}
+
+function buildStem(c){
+  const g={};c.s.forEach(v=>{const k=Math.floor(v/10);(g[k]=g[k]||[]).push(v);});
+  const lo=Math.floor(c.s[0]/10),hi=Math.floor(c.s[c.n-1]/10);
+  const sl=hi-lo<=60?Array.from({length:hi-lo+1},(_,i)=>lo+i):Object.keys(g).map(Number),rows=[];
+  sl.forEach(k=>{const a=g[k]||[];if(!a.length)rows.push({s:k,l:[],f:1});for(let i=0;i<a.length;i+=20)rows.push({s:k,l:a.slice(i,i+20),f:i===0});});
+  const dly=Math.min(40,1200/c.n),lp=[];let k=0,mw=1;
+  const box=(x,y,w,h,txtv)=>{
+    const m=new THREE.Mesh(boxg,[0,1,2,3,4,5].map(i=>i===4?new THREE.MeshStandardMaterial({map:ntex(txtv,h),roughness:.4}):mat(h)));return m;};
+  rows.forEach((r,ri)=>{
+    const y=(rows.length-1-ri)*1.25+.6;mw=Math.max(mw,r.l.length);
+    if(r.f){const m=box(0,y,1,NAVY,r.s);m.scale.set(1.5,.95,.95);m.position.set(0,y,0);m.castShadow=m.receiveShadow=true;put(m,ri*25);}
+    r.l.forEach((v,j)=>{
+      const m=box(0,y,1,c.ms.has(v)?PUR:BLU,v%10);m.scale.set(.95,.95,.95);m.position.set(2+j*1.15,y,0);m.castShadow=m.receiveShadow=true;put(m,(k++)*dly);
+      lp.push(new THREE.Vector3(2+j*1.15,y,0));
+    });
+  });
+  const Wd=2+mw*1.15,Hh=rows.length*1.25;
+  const back=new THREE.Mesh(boxg,new THREE.MeshStandardMaterial({color:0x1b2a55,transparent:true,opacity:.55,roughness:.2}));
+  back.scale.set(Wd+1.6,Hh+.6,.12);back.position.set(Wd/2-.9,Hh/2,-.7);back.receiveShadow=true;put(back,0);
+  rod(1.1,.1,Hh,0,GRY,.08);
+  const mi=[Math.floor((c.n-1)/2),Math.floor(c.n/2)],mp=lp[mi[0]].clone().add(lp[mi[1]]).multiplyScalar(.5);
+  hsList=[{id:'med',p:mp.clone().setZ(.8)},{id:'rng',p:lp[0].clone().setZ(.8)}];
+  const fm=c.s.findIndex(v=>c.ms.has(v));
+  if(fm>=0)hsList.push({id:'mode',p:lp[fm].clone().setZ(.8)});
+  setPlanes(c,null,0,0,0);
+  const d=Math.max(Wd*1.1,Hh*1.25)+8;
+  return{off:Wd/2-.4,tgt:[0,Hh/2,0],pos:[0,Hh/2+2,d]};
+}
+
+function buildHist(c){
+  const lo=c.s[0],hi=c.s[c.n-1],k=Math.ceil(1+Math.log2(c.n));
+  const nice=r=>{const p=Math.pow(10,Math.floor(Math.log10(r))),f=r/p;return(f<=1?1:f<=2?2:f<=5?5:10)*p;};
+  const want=hwUser||Math.max(1,nice((hi-lo+1)/k));let w=want;
+  while(Math.floor(hi/w)-Math.floor(lo/w)+1>60)w++;
+  const b0=Math.floor(lo/w),nb=Math.floor(hi/w)-b0+1,st=b0*w,cnt=Array(nb).fill(0);
+  c.s.forEach(v=>cnt[Math.floor(v/w)-b0]++);
+  const mx=Math.max(...cnt),bw=20/nb,dz=Math.min(1.6,Math.max(.5,bw*.5)),PH=8,ev=Math.ceil(nb/12);
+  const lab=i=>w===1?`${st+i*w}`:`${st+i*w}–${st+i*w+w-1}`,X=v=>(v-st)/w*bw;
+  let mp=null;
+  cnt.forEach((n,i)=>{
+    if(!n)return;const h=n/mx*PH,hotb=mx>1&&n===mx;
+    const m=new THREE.Mesh(boxg,mat(hotb?PUR:BLU));m.scale.set(bw*.92,h,dz*2);m.position.set(i*bw+bw/2,h/2,0);m.castShadow=m.receiveShadow=true;put(m,Math.min(i*40,900));
+    txt(String(n),'#eaf0ff',Math.min(.9,Math.max(.5,bw*.45)),i*bw+bw/2,h+.6,0);
+    if(hotb&&!mp)mp=new THREE.Vector3(i*bw+bw/2,h+1.5,0);
+  });
+  bar(-.3,20.3,.02,0,GRY,.05);
+  for(let i=0;i<nb;i+=ev)txt(lab(i),'#9fb0d0',.7,i*bw+bw/2,-.1,dz+.9);
+  txt('ช่วงข้อมูล (อันตรภาคชั้น)','#eaf0ff',.9,10,-.1,dz+2);
+  const x0=X(lo),x1=X(hi),zr=dz+2.8;
+  bar(x0,x1,.06,zr,TEAL,.14);rod(x0,0,.7,zr,TEAL,.14);rod(x1,0,.7,zr,TEAL,.14);
+  const H=PH+2;setPlanes(c,X,H,dz+.4,H);
+  hsList=[{id:'mean',p:new THREE.Vector3(X(c.mean),H+.3,0)},{id:'med',p:new THREE.Vector3(X(c.med),H+1.5,0)},{id:'rng',p:new THREE.Vector3((x0+x1)/2,.4,zr)}];
+  if(mp)hsList.push({id:'mode',p:mp});
+  if(document.activeElement!==$('hw'))$('hw').value=w;
+  return{off:10,tgt:[0,4,0],pos:[3,12,26]};
+}
+
+const B={dot:buildDot,stem:buildStem,hist:buildHist};
+const NM={mean:'ค่าเฉลี่ย',med:'มัธยฐาน',mode:'ฐานนิยม',rng:'พิสัย'};
+function rebuild(anim,doFly){
+  A=anim;t0=performance.now();clearW();
+  C=calc();const r=B[view](C);
+  W.position.x=P.position.x=-r.off;
+  animEnd=A?t0+C.n*40+1400:0;
+  if(doFly)fly={tgt:new THREE.Vector3(...r.tgt),pos:new THREE.Vector3(...r.pos)};
+  $('hs').innerHTML=hsList.map(h=>`<button class="hot${hot===h.id?' on':''}" data-id="${h.id}" style="--c:${css(COL[h.id])}"><i></i>${NM[h.id]}</button>`).join('');
+  hsList.forEach((h,i)=>{h.el=$('hs').children[i];});
+  if(hot&&!hsList.some(h=>h.id===hot))closeCard();else if(hot)openCard(hot);
+}
+
+function info(id,c){
+  const f=fmt;
+  if(id==='mean')return[`ผลรวมของข้อมูลทุกค่า หารด้วยจำนวนข้อมูล<br><b>${c.sum} ÷ ${c.n} = ${f(c.mean)}</b><br>แผ่นสีส้มในแผนภาพวางอยู่ที่ตำแหน่งนี้`];
+  if(id==='med'){
+    const m=c.n%2?`ข้อมูลมี ${c.n} ค่า (คี่) จึงเลือกค่าตรงกลางลำดับที่ ${(c.n+1)/2} = <b>${f(c.med)}</b>`:`ข้อมูลมี ${c.n} ค่า (คู่) จึงหาค่าเฉลี่ยของลำดับที่ ${c.n/2} และ ${c.n/2+1}<br><b>(${c.s[c.n/2-1]} + ${c.s[c.n/2]}) ÷ 2 = ${f(c.med)}</b>`;
+    return[`เรียงข้อมูลจากน้อยไปมากก่อน แล้วหาค่าที่อยู่ตรงกลาง<br>${m}`];
+  }
+  if(id==='mode')return[c.modes.length?`ค่าที่ซ้ำมากที่สุด (${c.mx} ครั้ง) คือ <b>${lim(c.modes)}</b><br>ใช้สีม่วงในแผนภาพ`:'ทุกค่าปรากฏเพียงครั้งเดียว จึง<b>ไม่มีฐานนิยม</b>'];
+  return[`ค่าสูงสุด − ค่าต่ำสุด<br><b>${f(c.s[c.n-1])} − ${f(c.s[0])} = ${f(c.rng)}</b><br>เส้นสีเขียวน้ำเงินบนพื้นแสดงช่วงตั้งแต่ต่ำสุดถึงสูงสุด`];
+}
+function openCard(id){
+  hot=id;const cd=$('card');cd.style.setProperty('--c',css(COL[id]));
+  $('ct').textContent=NM[id]+(id==='mean'?' (Mean)':id==='med'?' (Median)':id==='mode'?' (Mode)':' (Range)');
+  $('cb').innerHTML=info(id,C)[0];
+  if(!cd.classList.contains('show')){cd.classList.add('show');}
+  document.querySelectorAll('#hs .hot').forEach(b=>b.classList.toggle('on',b.dataset.id===id));
+}
+function closeCard(){hot=null;$('card').classList.remove('show');document.querySelectorAll('#hs .hot').forEach(b=>b.classList.remove('on'));}
+$('cx').onclick=closeCard;
+$('hs').addEventListener('click',e=>{const b=e.target.closest('.hot');if(b)openCard(b.dataset.id);});
+document.querySelectorAll('.tile').forEach(t=>t.onclick=()=>openCard(t.dataset.id));
+document.querySelectorAll('#views button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('#views button').forEach(x=>x.classList.toggle('on',x===b));
+  view=b.dataset.v;rebuild(true,true);
+});
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b));
+  document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('on',p.id==='p-'+b.dataset.t));
+});
+
+function size(){const w=cv.clientWidth,h=cv.clientHeight;if(!w||!h)return;R.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix();}
+new ResizeObserver(size).observe(cv);
+const tv=new THREE.Vector3();
+function loop(now){
+  requestAnimationFrame(loop);
+  if(!$('sc').hidden)return;
+  if(fly){
+    cam.position.lerp(fly.pos,.07);oc.target.lerp(fly.tgt,.07);
+    if(cam.position.distanceTo(fly.pos)<.05&&oc.target.distanceTo(fly.tgt)<.05)fly=null;
+  }
+  oc.update();
+  if(now<animEnd){
+    const e=u=>{const x=u-1;return 1+2.70158*x*x*x+1.70158*x*x;};
+    anim.forEach(m=>{const u=Math.min(1,Math.max(0,(now-t0-m.userData.d)/420));m.visible=u>0;m.scale.copy(m.userData.s).multiplyScalar(Math.max(.001,u<1?e(u):1));});
+  }else if(anim.length){anim.forEach(m=>{m.visible=true;m.scale.copy(m.userData.s);});anim=[];}
+  Object.keys(pl).forEach(k=>{
+    const p=pl[k];if(!p.on)return;
+    p.m.position.x+=(p.x-p.m.position.x)*.18;p.sp.position.x=p.m.position.x;
+    p.m.material.opacity=hot===k?.6:.3;
+  });
+  const w=cv.clientWidth,h=cv.clientHeight;
+  hsList.forEach(o=>{
+    if(!o.el)return;tv.copy(o.p);W.localToWorld(tv);tv.project(cam);
+    const vis=tv.z<1;o.el.style.display=vis?'':'none';
+    o.el.style.transform=`translate(${(tv.x*.5+.5)*w+8}px,${(-tv.y*.5+.5)*h-14}px)`;
+  });
+  R.render(S,cam);
+}
+
+const RM=()=>Math.max(1,Math.round(+$('rmax').value)||60);
+const rnd=()=>Math.floor(Math.random()*(RM()+1));
+function update(anim,doFly){
+  const c=calc();
+  $('mean').textContent=fmt(c.mean);$('med').textContent=fmt(c.med);
+  $('mode').textContent=c.modes.length?lim(c.modes,4):'ไม่มี';$('rng').textContent=fmt(c.rng);
+  const mid=c.n%2?`ข้อมูลมี ${c.n} ค่า (คี่) → มัธยฐานคือค่าตรงกลางลำดับที่ ${(c.n+1)/2} = <b>${fmt(c.med)}</b>`
+    :`ข้อมูลมี ${c.n} ค่า (คู่) → มัธยฐานคือค่าเฉลี่ยของลำดับที่ ${c.n/2} และ ${c.n/2+1} = (${c.s[c.n/2-1]}+${c.s[c.n/2]}) ÷ 2 = <b>${fmt(c.med)}</b>`;
+  const lst=c.n>60?c.s.slice(0,30).join(', ')+' … '+c.s.slice(-10).join(', ')+` (รวม ${c.n} ค่า)`:c.s.join(', ');
+  $('steps').innerHTML=`<b>ข้อมูลที่เรียงแล้ว:</b> ${lst}<br><b>ค่าเฉลี่ย</b> = ${c.sum} ÷ ${c.n} = <b>${fmt(c.mean)}</b><br><b>มัธยฐาน:</b> ${mid}<br><b>ฐานนิยม:</b> ${c.modes.length?`ซ้ำมากที่สุด (${c.mx} ครั้ง) = <b>${lim(c.modes)}</b>`:'ทุกค่าปรากฏครั้งเดียว จึง<b>ไม่มีฐานนิยม</b>'}<br><b>พิสัย</b> = ${fmt(c.s[c.n-1])} − ${fmt(c.s[0])} = <b>${fmt(c.rng)}</b>`;
+  rebuild(anim,doFly);
+}
+function buildSliders(){
+  const n=Math.max(1,Math.floor(+$('nn').value)||1);
+  $('nn').value=n;$('n').max=Math.max(30,n);$('n').value=n;
+  while(vals.length<n)vals.push(rnd());vals.length=n;
+  const Rg=vals.reduce((a,b)=>Math.max(a,b),RM());
+  $('vals').innerHTML=vals.map((v,i)=>`<div><span>x<sub>${i+1}</sub></span><input type="number" class="nb" min="0" data-i="${i}" value="${v}"><input type="range" class="rg" min="0" max="${Rg}" data-i="${i}" value="${v}"></div>`).join('');
+  update(true,false);
+}
+$('vals').addEventListener('input',e=>{
+  const t=e.target,i=+t.dataset.i;if(t.value===''||isNaN(i))return;
+  const v=Math.max(0,Math.round(+t.value)||0);vals[i]=v;
+  const rg=t.parentNode.querySelector('.rg'),nb=t.parentNode.querySelector('.nb');
+  if(v>+rg.max)rg.max=v;if(t===rg)nb.value=v;else rg.value=v;
+  update(false,false);
+});
+$('nn').onchange=buildSliders;
+$('n').oninput=e=>{$('nn').value=e.target.value;buildSliders();};
+$('rmax').onchange=buildSliders;
+$('rnd').onclick=()=>{vals=vals.map(rnd);buildSliders();};
+$('srt').onclick=()=>{vals.sort((a,b)=>a-b);buildSliders();};
+$('usep').onclick=()=>{
+  const a=$('paste').value.split(/[\s,;]+/).filter(Boolean).map(Number).filter(Number.isFinite).map(x=>Math.max(0,Math.round(x)));
+  if(!a.length){alert('ไม่พบตัวเลขในช่องข้อมูล');return;}
+  vals=a;$('nn').value=a.length;buildSliders();
+};
+$('hw').onchange=()=>{hwUser=Math.max(1,Math.round(+$('hw').value)||1);update(true,false);};
+$('hauto').onclick=()=>{hwUser=null;update(true,false);};
+
+const Q=[
+ {q:'ข้อมูลชุดหนึ่งคือ 12, 15, 15, 18, 20 ค่าเฉลี่ยเท่ากับเท่าใด',o:['15','16','17','18'],a:1,e:'ผลรวม = 12+15+15+18+20 = 80 จำนวนข้อมูล 5 ค่า ค่าเฉลี่ย = 80 ÷ 5 = 16'},
+ {q:'ข้อมูลชุดหนึ่งคือ 4, 9, 2, 7, 8, 6 มัธยฐานเท่ากับเท่าใด',o:['6','6.5','7','8'],a:1,e:'เรียงข้อมูล: 2, 4, 6, 7, 8, 9 (มี 6 ค่า เป็นจำนวนคู่) มัธยฐาน = (6+7) ÷ 2 = 6.5'},
+ {q:'จากแผนภาพต้นไม้ ฐานนิยมของข้อมูลคือเท่าใด\n1 | 2 5 5 8\n2 | 0 3 5 5 5\n3 | 1\n(1 | 2 แทน 12)',o:['15','23','25','31'],a:2,e:'ต้น 2 ใบ 5 ปรากฏ 3 ครั้ง คือ 25 ซ้ำมากที่สุด ฐานนิยมจึงเป็น 25'}
+];
+const L='กขคง';
+const esc=t=>String(t).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+$('quiz').innerHTML=Q.map((x,i)=>`<div class="q"><b>ข้อ ${i+1}.</b> <span class="t">${esc(x.q)}</span>${x.o.map((t,j)=>`<label><input type="radio" name="q${i}" value="${j}"> ${L[j]}. ${esc(t)}</label>`).join('')}<div class="fb" id="fb${i}"></div></div>`).join('');
+$('chk').onclick=()=>{
+  let sc=0;
+  Q.forEach((x,i)=>{
+    const r=document.querySelector(`input[name=q${i}]:checked`),fb=$('fb'+i);
+    if(!r){fb.className='fb no';fb.textContent='ยังไม่ได้เลือกคำตอบ';return;}
+    if(+r.value===x.a){sc++;fb.className='fb ok';fb.innerHTML='✅ ถูกต้อง! '+esc(x.e);}
+    else{fb.className='fb no';fb.innerHTML='❌ ยังไม่ถูก ลองคิดใหม่อีกครั้ง หรือกด "ดูเฉลยทั้งหมด"';}
+  });
+  $('score').textContent=`ได้ ${sc} / ${Q.length} คะแนน`+(sc===Q.length?' 🎉 เก่งมาก!':'');
+};
+$('rev').onclick=()=>{Q.forEach((x,i)=>{const fb=$('fb'+i);fb.className='fb ans';fb.innerHTML=`<b>เฉลย: ${L[x.a]}. ${esc(x.o[x.a])}</b><br>${esc(x.e)}`;});};
+
+size();buildSliders();
+fly=null;
+requestAnimationFrame(loop);
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{tc=new Map();rebuild(false,false);});
+</script>
+<script>
+
+(()=>{
+const fmt=x=>Number.isInteger(x)?x:+x.toFixed(2);
+const rr=(a,b)=>a+Math.floor(Math.random()*(b-a+1)),pick=a=>a[Math.floor(Math.random()*a.length)];
+const shuf=a=>{for(let i=a.length-1;i>0;i--){const j=rr(0,i);[a[i],a[j]]=[a[j],a[i]];}return a;};
+const MODES={
+ avg:{n:'Average Hunter',th:'นักล่าค่าเฉลี่ย',ic:'🎯',tip:'ค่าเฉลี่ย = ผลรวมของข้อมูลทั้งหมด ÷ จำนวนข้อมูล'},
+ mode:{n:'Mode Master',th:'เจ้าแห่งฐานนิยม',ic:'👑',tip:'ฐานนิยม = ค่าที่ปรากฏซ้ำมากที่สุด และอาจมีได้หลายค่า'},
+ med:{n:'Median Mission',th:'ภารกิจมัธยฐาน',ic:'⚖️',tip:'มัธยฐาน = ค่ากลางหลังเรียงข้อมูลจากน้อยไปมาก ถ้าจำนวนข้อมูลเป็นคู่ให้หาค่าเฉลี่ยของสองค่ากลาง'},
+ rng:{n:'Range Challenge',th:'พิชิตพิสัย',ic:'📏',tip:'พิสัย = ค่าสูงสุด − ค่าต่ำสุด'}};
+function stats(a){
+ const s=[...a].sort((x,y)=>x-y),n=s.length;if(!n)return{s,n:0};
+ const sum=s.reduce((x,y)=>x+y,0),f=new Map();s.forEach(v=>f.set(v,(f.get(v)||0)+1));
+ let mx=0;f.forEach(c=>{mx=Math.max(mx,c);});
+ const modes=mx<2?[]:[...f].filter(e=>e[1]===mx).map(e=>e[0]).sort((x,y)=>x-y);
+ return{s,n,sum,f,mx,modes,mean:sum/n,med:n%2?s[(n-1)/2]:(s[n/2-1]+s[n/2])/2,min:s[0],max:s[n-1],rng:s[n-1]-s[0]};
+}
+function genMission(mode,lv){
+ const hv=8+lv*2,pool=Array.from({length:hv+2},(_,i)=>i+1);
+ if(mode==='avg'){
+  const T=rr(4,hv),n=pick([3,4,5,6]),sol=[];
+  for(let i=0;i<Math.floor(n/2);i++){const d=rr(1,Math.min(T,4));sol.push(T-d,T+d);}
+  if(n%2)sol.push(T);
+  return{mode,T,sol,hv,min:3,max:7,text:`สร้างชุดข้อมูลที่มีค่าเฉลี่ยเท่ากับ ${T}`,rule:'ใช้ข้อมูล 3–7 ค่า'};
+ }
+ if(mode==='mode'){
+  const p=shuf([...pool]);
+  if(lv>=2&&Math.random()<.4){
+   const T=[p[0],p[1]].sort((a,b)=>a-b);
+   return{mode,T,sol:[p[0],p[0],p[1],p[1],p[2]],hv,min:5,max:9,text:`สร้างชุดข้อมูลที่มีฐานนิยม 2 ค่า คือ ${T[0]} และ ${T[1]}`,rule:'ใช้ข้อมูล 5–9 ค่า'};
+  }
+  return{mode,T:[p[0]],sol:[p[0],p[0],p[0],p[1],p[2]],hv,min:5,max:9,text:`สร้างชุดข้อมูลที่มีฐานนิยมเพียงค่าเดียว คือ ${p[0]}`,rule:'ใช้ข้อมูล 5–9 ค่า'};
+ }
+ if(mode==='med'){
+  if(lv>=2&&Math.random()<.5){
+   const k=rr(3,hv),n=pick([4,6]),h=n/2,sol=[k,k+1];
+   for(let i=0;i<h-1;i++)sol.push(rr(Math.max(0,k-5),k),rr(k+1,k+6));
+   return{mode,T:k+.5,sol,hv,min:3,max:8,text:`สร้างชุดข้อมูลที่มีมัธยฐานเท่ากับ ${k+.5}`,rule:'ใช้ข้อมูล 3–8 ค่า'};
+  }
+  const M=rr(3,hv),n=pick([3,5,7]),h=(n-1)/2,sol=[M];
+  for(let i=0;i<h;i++)sol.push(rr(Math.max(0,M-5),M),rr(M,M+5));
+  return{mode,T:M,sol,hv,min:3,max:8,text:`สร้างชุดข้อมูลที่มีมัธยฐานเท่ากับ ${M}`,rule:'ใช้ข้อมูล 3–8 ค่า'};
+ }
+ const G=rr(4,hv+2),lo=rr(1,6),hi=lo+G,n=pick([3,4,5]),sol=[lo,hi];
+ for(let i=0;i<n-2;i++)sol.push(rr(lo,hi));
+ return{mode,T:G,sol,hv:hi+3,min:3,max:7,text:`สร้างชุดข้อมูลที่มีพิสัยเท่ากับ ${G}`,rule:'ใช้ข้อมูล 3–7 ค่า'};
+}
+function evalM(M,a){
+ const s=stats(a),fr=s.n?[...s.f].map(e=>`${e[0]}×${e[1]}`).join(', '):'';
+ if(s.n<M.min)return{ok:0,msg:`ยังไม่สำเร็จ ต้องมีข้อมูลอย่างน้อย ${M.min} ค่า (ตอนนี้มี ${s.n} ค่า)`};
+ if(s.n>M.max)return{ok:0,msg:`ยังไม่สำเร็จ ใช้ข้อมูลได้ไม่เกิน ${M.max} ค่า ลองนำบางตัวออกจากตะกร้า`};
+ if(M.mode==='avg'){
+  if(Math.abs(s.mean-M.T)<1e-9)return{ok:1,msg:`ยอดเยี่ยม! ค่าเฉลี่ยของข้อมูลเท่ากับ ${M.T} ตามเป้าหมาย<br>(${s.s.join(' + ')}) ÷ ${s.n} = ${s.sum} ÷ ${s.n} = ${M.T}`};
+  return{ok:0,msg:`ยังไม่สำเร็จ ลองตรวจสอบผลรวมและจำนวนข้อมูลอีกครั้ง<br>ตอนนี้ ${s.sum} ÷ ${s.n} = ${fmt(s.mean)}`,hint:s.mean>M.T?'ค่าเฉลี่ยสูงเกินไป ลองเพิ่มตัวเลขที่น้อยกว่าค่าเฉลี่ยปัจจุบัน':'ค่าเฉลี่ยต่ำเกินไป ลองเพิ่มตัวเลขที่มากกว่าค่าเฉลี่ยปัจจุบัน'};
+ }
+ if(M.mode==='mode'){
+  if(s.modes.length===M.T.length&&M.T.every((v,i)=>s.modes[i]===v))return{ok:1,msg:`ยอดเยี่ยม! ฐานนิยมคือ ${M.T.join(' และ ')} ซึ่งปรากฏ ${s.mx} ครั้ง<br>ความถี่: ${fr}`};
+  const has=M.T.some(v=>s.modes.includes(v));
+  return{ok:0,msg:`ยังไม่สำเร็จ ฐานนิยมคือค่าที่ปรากฏซ้ำมากที่สุด<br>ความถี่ตอนนี้: ${fr}`,hint:!s.modes.length?'ตอนนี้ทุกค่าปรากฏครั้งเดียว จึงยังไม่มีฐานนิยม ลองเก็บค่าเป้าหมายซ้ำอีก':has?'ฐานนิยมยังไม่ตรงโจทย์พอดี ลองดูว่ามีค่าอื่นซ้ำเท่ากับค่าเป้าหมายหรือไม่':'ค่าเป้าหมายยังซ้ำไม่มากที่สุด ลองเก็บค่านั้นเพิ่ม'};
+ }
+ if(M.mode==='med'){
+  if(Math.abs(s.med-M.T)<1e-9)return{ok:1,msg:`ยอดเยี่ยม! เรียงข้อมูลได้ ${s.s.join(', ')}<br>${s.n%2?`มัธยฐานคือค่าลำดับที่ ${(s.n+1)/2} = ${s.med}`:`มัธยฐานคือค่าเฉลี่ยของลำดับที่ ${s.n/2} และ ${s.n/2+1} = (${s.s[s.n/2-1]} + ${s.s[s.n/2]}) ÷ 2 = ${s.med}`}`};
+  return{ok:0,msg:`ยังไม่สำเร็จ มัธยฐานคือค่ากลางหลังเรียงข้อมูลจากน้อยไปมาก<br>ตอนนี้มัธยฐานคือ ${fmt(s.med)}`,hint:s.med>M.T?'มัธยฐานสูงเกินไป ลองเพิ่มตัวเลขที่น้อยกว่าเป้าหมาย':'มัธยฐานต่ำเกินไป ลองเพิ่มตัวเลขที่มากกว่าเป้าหมาย'};
+ }
+ if(s.rng===M.T)return{ok:1,msg:`ยอดเยี่ยม! พิสัยคำนวณจากค่าสูงสุดลบค่าต่ำสุด<br>${s.max} − ${s.min} = ${s.rng} ตามเป้าหมาย`};
+ return{ok:0,msg:`ยังไม่สำเร็จ พิสัยคำนวณจากค่าสูงสุดลบค่าต่ำสุด<br>ตอนนี้ ${s.max} − ${s.min} = ${s.rng}`,hint:s.rng>M.T?'พิสัยกว้างเกินไป ลองนำค่าที่อยู่ห่างที่สุดออก':'พิสัยแคบเกินไป ลองเก็บค่าที่ห่างจากข้อมูลเดิมมากขึ้น'};
+}
+const $=id=>document.getElementById(id);
+const SESSION=5,A=$('scArena'),BK=$('scBasket'),CUR=$('scCur');
+let mode='avg',state='menu',score=0,done=0,tries=0,lv=1,mis=null,basket=[],items=[],held=null,tLeft=0,tTot=1,spawnT=0,last=0,loopOn=false,hovEl=null,handAt=0,per={};
+const cur={x:0,y:0,on:false,down:false};
+const inBasket=y=>y>A.clientHeight-100;
+
+function place(it){it.el.style.transform=`translate(${it.x-34}px,${it.y-34}px)`;}
+function clearItems(){items.forEach(i=>i.el.remove());items=[];held=null;hovEl=null;}
+function fx(x,y,txt,col){
+  for(let i=0;i<12;i++){
+    const p=document.createElement('span'),a=Math.random()*6.28,d=30+Math.random()*50;
+    p.className='sc-p';p.style.cssText=`left:${x}px;top:${y}px;background:${['#ffd54a','#2ee59d','#35e0ff','#ff5fa2'][i%4]};--dx:${Math.cos(a)*d}px;--dy:${Math.sin(a)*d}px`;
+    A.appendChild(p);p.onanimationend=()=>p.remove();
+  }
+  const f=document.createElement('div');f.className='sc-fl';f.textContent=txt;f.style.cssText=`left:${x-20}px;top:${y-30}px;${col?'color:'+col:''}`;
+  A.appendChild(f);f.onanimationend=()=>f.remove();
+}
+function spawn(){
+  const W=A.clientWidth,v=Math.random()<.55?pick(mis.sol):rr(0,mis.hv);
+  const el=document.createElement('div');el.className='sc-n';el.textContent=v;
+  const it={v,x:rr(44,Math.max(45,W-44)),y:-40,vy:(95+22*lv)*(.85+Math.random()*.3),el};
+  A.insertBefore(el,CUR);items.push(it);place(it);
+}
+function hud(){
+  $('scScore').textContent=score;$('scTime').textContent=Math.max(0,Math.ceil(tLeft));$('scDone').textContent=done;
+  $('scLv').textContent=lv;$('scNo').textContent=Math.min(tries+1,SESSION)+'/'+SESSION;
+  $('scBar').style.width=Math.max(0,tLeft/tTot*100)+'%';
+}
+function renderData(){
+  const s=stats(basket),m=mis.mode;
+  $('scN').textContent=s.n;
+  $('scChips').innerHTML=s.s.map((v,i)=>{
+    let c='';
+    if(m==='med')c=s.n%2?(i===(s.n-1)/2?'mid':''):(i===s.n/2-1||i===s.n/2?'mid':'');
+    if(m==='mode'&&s.modes.includes(v))c='md';
+    if(m==='rng'&&(i===0||i===s.n-1))c='ed';
+    return `<button class="${c}" data-v="${v}">${v}</button>`;
+  }).join('')||'<span class="sc-note">ยังไม่มีข้อมูล หยิบตัวเลขลงตะกร้าได้เลย</span>';
+  let ex='';
+  if(s.n){
+    if(m==='avg')ex=`ผลรวม ${s.sum} • จำนวน ${s.n} ค่า • ค่าเฉลี่ย ${s.sum} ÷ ${s.n} = ${fmt(s.mean)}`;
+    if(m==='mode')ex='ความถี่: '+[...s.f].map(e=>`${e[0]}×${e[1]}`).join(', ');
+    if(m==='med')ex=`เรียงจากน้อยไปมาก ค่ากลาง (กรอบสีชมพู) = ${s.n%2?`ลำดับที่ ${(s.n+1)/2}`:`ลำดับที่ ${s.n/2} และ ${s.n/2+1}`} → ${fmt(s.med)}`;
+    if(m==='rng')ex=`ต่ำสุด ${s.min} • สูงสุด ${s.max} • ${s.max} − ${s.min} = ${s.rng}`;
+  }
+  $('scExtra').textContent=ex;
+  $('scMean').textContent=s.n?fmt(s.mean):'-';$('scMed').textContent=s.n?fmt(s.med):'-';
+  $('scMode').textContent=s.n?(s.modes.length?s.modes.join(', '):'ไม่มี'):'-';$('scRng').textContent=s.n?s.rng:'-';
+}
+function layer(html){$('scLayerBox').innerHTML=html;$('scLayer').classList.add('show');}
+function unlayer(){$('scLayer').classList.remove('show');}
+function feedback(r){const f=$('scFb');f.className='sc-fb '+(r.ok?'ok':'no');f.innerHTML=r.msg+(r.hint?`<br><b>คำใบ้:</b> ${r.hint}`:'');}
+function newMission(){
+  mis=genMission(mode,lv);basket=[];clearItems();
+  tTot=tLeft=Math.max(40,85-7*lv);spawnT=0;state='play';
+  $('scMis').innerHTML=`${MODES[mode].ic} ${mis.text}<small>${mis.rule}</small>`;
+  $('scFb').className='sc-fb';unlayer();$('scPause').hidden=false;$('scResume').hidden=true;
+  renderData();hud();kick();
+}
+function newSession(){score=0;done=0;tries=0;lv=1;per={};newMission();}
+function bump(pass){const p=per[mode]||(per[mode]={t:0,p:0});p.t++;if(pass)p.p++;tries++;}
+function afterMission(html,pass){
+  state='result';bump(pass);lv=Math.min(5,1+Math.floor(done/2));hud();
+  const end=tries>=SESSION;
+  layer(`<h3>${pass?'🎉 ผ่านภารกิจ!':'⏰ หมดเวลา'}</h3><p>${html}</p><p><b>คะแนนรวม ${score}</b> • สำเร็จ ${done}/${tries} ภารกิจ</p><button class="sc-go" id="scNext">${end?'ดูสรุปผล':'ภารกิจต่อไป ▶'}</button>`);
+  $('scNext').onclick=()=>end?summary():newMission();
+}
+function summary(){
+  state='end';clearItems();
+  const rows=Object.keys(per).map(m=>`<p><b>${MODES[m].ic} ${MODES[m].n}</b> ผ่าน ${per[m].p}/${per[m].t} ครั้ง<br><small>${MODES[m].tip}</small></p>`).join('')||'<p>ยังไม่ได้ทำภารกิจ</p>';
+  layer(`<h3>🏁 สรุปผล</h3><p><b>คะแนนรวม ${score}</b> • ภารกิจสำเร็จ ${done}/${tries}</p><b>ความรู้ที่ได้ฝึก</b>${rows}<button class="sc-go" id="scAgain">↺ เล่นอีกครั้ง</button>`);
+  $('scAgain').onclick=newSession;
+}
+$('scChk').onclick=()=>{
+  if(state!=='play')return;
+  const r=evalM(mis,basket);feedback(r);
+  if(r.ok){const b=50+Math.ceil(tLeft)*2;score+=b;done++;afterMission(`${r.msg}<br>โบนัสภารกิจ 50 + โบนัสเวลา ${Math.ceil(tLeft)*2} = <b>+${b} คะแนน</b>`,true);}
+};
+function timeout(){afterMission(`ภารกิจ: ${mis.text}<br>ตัวอย่างคำตอบ: ${[...mis.sol].sort((a,b)=>a-b).join(', ')}`,false);}
+function collect(it){
+  it.el.remove();items=items.filter(x=>x!==it);basket.push(it.v);score+=10;
+  fx(it.x,it.y,'+10');renderData();hud();
+  const b=$('scChips').querySelector(`button[data-v="${it.v}"]`);if(b){b.classList.add('pop');}
+}
+$('scChips').onclick=e=>{
+  const b=e.target.closest('button');if(!b||state!=='play')return;
+  const i=basket.indexOf(+b.dataset.v);if(i<0)return;
+  basket.splice(i,1);score=Math.max(0,score-10);renderData();hud();
+};
+function grab(){
+  let best=null,bd=80;
+  items.forEach(it=>{const d=Math.hypot(it.x-cur.x,it.y-cur.y);if(d<bd){bd=d;best=it;}});
+  if(best){held=best;best.el.classList.add('held');}
+}
+function drop(){
+  if(!held)return;const it=held;held=null;it.el.classList.remove('held');BK.classList.remove('hot');
+  if(inBasket(it.y)&&state==='play')collect(it);
+}
+function input(x,y,down){
+  cur.x=x;cur.y=y;cur.on=true;
+  CUR.style.display='block';CUR.style.transform=`translate(${x}px,${y}px)`;CUR.classList.toggle('down',down);
+  if(down&&!cur.down&&state==='play')grab();
+  if(!down&&cur.down)drop();
+  cur.down=down;
+}
+const rel=e=>{const r=A.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top];};
+const inLayer=e=>!!e.target.closest('.sc-layer.show');
+A.addEventListener('pointerdown',e=>{if(inLayer(e))return;A.setPointerCapture(e.pointerId);const[x,y]=rel(e);input(x,y,true);});
+A.addEventListener('pointermove',e=>{if(inLayer(e)||performance.now()-handAt<400)return;const[x,y]=rel(e);input(x,y,e.buttons>0||(e.pointerType==='touch'&&cur.down));});
+A.addEventListener('pointerup',e=>{if(inLayer(e))return;const[x,y]=rel(e);input(x,y,false);if(e.pointerType==='touch')CUR.style.display='none';});
+A.addEventListener('pointercancel',()=>{input(cur.x,cur.y,false);});
+
+function frame(t){
+  if(!loopOn)return;requestAnimationFrame(frame);
+  const dt=Math.min(.05,(t-last)/1000);last=t;
+  if(state!=='play')return;
+  tLeft-=dt;spawnT-=dt;
+  if(spawnT<=0){spawn();spawnT=Math.max(.5,1.15-.1*lv)*(.8+Math.random()*.4);}
+  const H=A.clientHeight;
+  for(let i=items.length-1;i>=0;i--){
+    const it=items[i];
+    if(it===held){it.x=cur.x;it.y=cur.y;}else it.y+=it.vy*dt;
+    if(it.y>H+50&&it!==held){it.el.remove();items.splice(i,1);continue;}
+    place(it);
+  }
+  let best=null,bd=80;
+  if(cur.on&&!held)items.forEach(it=>{const d=Math.hypot(it.x-cur.x,it.y-cur.y);if(d<bd){bd=d;best=it;}});
+  if(best&&best.el!==hovEl){if(hovEl)hovEl.classList.remove('hov');hovEl=best.el;hovEl.classList.add('hov');}
+  if(!best&&hovEl){hovEl.classList.remove('hov');hovEl=null;}
+  BK.classList.toggle('hot',!!held&&inBasket(held.y));
+  hud();
+  if(tLeft<=0){tLeft=0;if(held){held.el.classList.remove('held');held=null;}timeout();}
+}
+function kick(){if(!loopOn){loopOn=true;last=performance.now();requestAnimationFrame(frame);}}
+function pause(){if(state!=='play')return;state='pause';$('scPause').hidden=true;$('scResume').hidden=false;layer('<h3>⏸ หยุดเกมชั่วคราว</h3><p>กด "เล่นต่อ" เมื่อพร้อม</p><button class="sc-go" id="scR2">▶ เล่นต่อ</button>');$('scR2').onclick=resume;}
+function resume(){if(state!=='pause')return;state='play';unlayer();$('scPause').hidden=false;$('scResume').hidden=true;last=performance.now();}
+$('scPause').onclick=pause;$('scResume').onclick=resume;
+$('scRestart').onclick=()=>{if(confirm('เริ่มเกมใหม่ตั้งแต่ต้น?'))newSession();};
+$('scEnd').onclick=()=>{if(state==='play'||state==='pause')summary();};
+
+function setMode(m){
+  mode=m;
+  document.querySelectorAll('#scModes button,#scCards button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
+  if(['play','pause','result'].includes(state))newSession();
+}
+$('scModes').innerHTML=Object.keys(MODES).map(m=>`<button data-m="${m}">${MODES[m].ic} ${MODES[m].th}</button>`).join('');
+$('scCards').innerHTML=Object.keys(MODES).map(m=>`<button data-m="${m}"><b>${MODES[m].ic} ${MODES[m].n}</b>${MODES[m].th}<br><small>${MODES[m].tip}</small></button>`).join('');
+document.querySelectorAll('#scModes button,#scCards button').forEach(b=>b.onclick=()=>setMode(b.dataset.m));
+$('scStart').onclick=()=>{$('scMenu').hidden=true;$('scPlay').hidden=false;newSession();};
+$('scOpen').onclick=()=>{
+  $('sc').hidden=false;document.body.style.overflow='hidden';
+  if(state==='play')pause();
+  setMode(mode);
+};
+$('scBack').onclick=()=>{
+  if(state==='play')pause();
+  camStop();$('sc').hidden=true;document.body.style.overflow='';
+};
+
+const CDN='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14',MODEL='https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task';
+let hl=null,stream=null,camRun=false,lastT=-1,pinch=false,pc=0,sm=null;
+const V=$('scVid'),OV=$('scOv'),ox=OV.getContext('2d'),camSay=t=>{$('scCamSt').textContent=t;};
+function handFrame(lm){
+  const a=lm[4],b=lm[8],ps=Math.hypot(lm[0].x-lm[9].x,lm[0].y-lm[9].y)||.1,d=Math.hypot(a.x-b.x,a.y-b.y)/ps;
+  const raw=pinch?d<.5:d<.3;
+  if(raw!==pinch){pc++;if(pc>=2){pinch=raw;pc=0;}}else pc=0;
+  const x=Math.min(1,Math.max(0,(1-(a.x+b.x)/2-.1)/.8)),y=Math.min(1,Math.max(0,((a.y+b.y)/2-.1)/.75));
+  if(!sm)sm={x,y};
+  const dx=x-sm.x,dy=y-sm.y,k=Math.min(.85,.2+Math.hypot(dx,dy)*10);sm.x+=dx*k;sm.y+=dy*k;
+  handAt=performance.now();input(sm.x*A.clientWidth,sm.y*A.clientHeight,pinch);
+  camSay(pinch?'✊ หนีบนิ้วอยู่ (กำลังจับ)':'🖐️ ตรวจพบมือ');
+}
+function drawLm(lm){
+  const W=V.videoWidth||640,H=V.videoHeight||480;
+  if(OV.width!==W||OV.height!==H){OV.width=W;OV.height=H;}
+  ox.clearRect(0,0,W,H);if(!lm)return;
+  ox.fillStyle=pinch?'#2ee59d':'#35e0ff';
+  lm.forEach(p=>{ox.beginPath();ox.arc(p.x*W,p.y*H,5,0,7);ox.fill();});
+  ox.strokeStyle='#fff';ox.lineWidth=4;ox.beginPath();ox.moveTo(lm[4].x*W,lm[4].y*H);ox.lineTo(lm[8].x*W,lm[8].y*H);ox.stroke();
+}
+function camLoop(){
+  if(!camRun)return;
+  if(V.readyState>=2&&V.currentTime!==lastT){
+    lastT=V.currentTime;
+    const r=hl.detectForVideo(V,performance.now()),lm=r.landmarks&&r.landmarks[0];
+    if(lm)handFrame(lm);
+    else{if(cur.down&&performance.now()-handAt>250){pinch=false;pc=0;input(cur.x,cur.y,false);}sm=null;camSay('ไม่พบมือ ยกมือให้อยู่ในกรอบกล้อง');}
+    drawLm(lm);
+  }
+  requestAnimationFrame(camLoop);
+}
+function camStop(){
+  camRun=false;if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;V.srcObject=null;
+  if(cur.down)input(cur.x,cur.y,false);pinch=false;sm=null;
+  $('scCam').classList.remove('on');camSay('กล้องปิดอยู่ (เล่นด้วยเมาส์หรือหน้าจอสัมผัสได้)');
+}
+$('scCamOff').onclick=camStop;
+$('scCamOn').onclick=async()=>{
+  if(camRun)return;
+  $('scCamOn').disabled=true;camSay('กำลังโหลดโมเดลตรวจจับมือ…');
+  try{
+    if(!hl){
+      const{HandLandmarker,FilesetResolver}=await import(CDN+'/vision_bundle.mjs');
+      const fs=await FilesetResolver.forVisionTasks(CDN+'/wasm');
+      const mk=d=>HandLandmarker.createFromOptions(fs,{baseOptions:{modelAssetPath:MODEL,delegate:d},runningMode:'VIDEO',numHands:1});
+      try{hl=await mk('GPU');}catch(_){hl=await mk('CPU');}
+    }
+    stream=await navigator.mediaDevices.getUserMedia({video:{width:640,height:480,facingMode:'user'},audio:false});
+    V.srcObject=stream;await V.play();$('scCam').classList.add('on');camRun=true;lastT=-1;camSay('เปิดกล้องแล้ว ยกมือให้อยู่ในกรอบ');camLoop();
+  }catch(e){camStop();camSay('เปิดกล้องไม่ได้: '+(e&&e.message?e.message:e)+' — เล่นด้วยเมาส์หรือหน้าจอสัมผัสแทนได้');}
+  $('scCamOn').disabled=false;
+};
+})();
+
+</script>
+</body>
+</html>
